@@ -1,58 +1,74 @@
 <template>
-  <q-card flat class="auth-card glass-card">
-    <div class="eyebrow q-mb-xs">{{ t('auth.staffSignIn') }}</div>
-    <div class="page-title q-mb-lg">{{ t('auth.welcomeBack') }}</div>
+  <q-card flat class="auth-card">
+    <div class="text-caption text-primary text-weight-bold text-uppercase q-mb-xs">
+      {{ locale.t('auth.staffPortal') }}
+    </div>
+    <div class="text-h5 text-weight-bolder q-mb-lg">
+      {{ locale.t('auth.welcomeBack') }}
+    </div>
 
-    <q-form class="column auth-form" @submit.prevent="onSubmit">
+    <q-form class="column q-gutter-y-md" @submit.prevent="onSubmit">
       <q-input
         v-model="email"
-        filled
-        :label="t('auth.email')"
+        outlined
+        :label="locale.t('auth.email')"
         type="email"
-        class="auth-field"
-        :rules="[required(t('auth.emailRequired')), emailRule]"
+        :rules="[required('Email is required'), emailRule]"
         lazy-rules
         autocomplete="username"
-      />
+      >
+        <template #prepend>
+          <q-icon name="sym_o_mail" />
+        </template>
+      </q-input>
+
       <q-input
         v-model="password"
-        filled
+        outlined
         :type="showPassword ? 'text' : 'password'"
-        :label="t('auth.password')"
-        class="auth-field"
-        :rules="[required(t('auth.passwordRequired'))]"
+        :label="locale.t('auth.password')"
+        :rules="[required('Password is required')]"
         lazy-rules
         autocomplete="current-password"
       >
+        <template #prepend>
+          <q-icon name="sym_o_lock" />
+        </template>
         <template #append>
           <q-icon
             :name="showPassword ? 'sym_o_visibility_off' : 'sym_o_visibility'"
-            class="cursor-pointer ink-faint"
+            class="cursor-pointer"
             @click="showPassword = !showPassword"
           />
         </template>
       </q-input>
 
-      <div v-if="error" class="error-banner q-mt-sm">{{ error }}</div>
+      <q-banner v-if="error" dense rounded class="bg-red-1 text-negative q-mt-xs">
+        <template #avatar>
+          <q-icon name="sym_o_error" color="negative" />
+        </template>
+        {{ error }}
+      </q-banner>
 
       <q-btn
         type="submit"
         unelevated
         color="primary"
-        class="stamp q-mt-md"
-        size="md"
+        size="lg"
+        class="full-width q-mt-md text-weight-bold"
         :loading="loading"
-        :label="t('auth.signIn')"
+        :label="locale.t('auth.signIn')"
+        icon-right="sym_o_login"
       />
     </q-form>
 
-    <div class="row items-center q-my-lg">
-      <q-separator class="col hairline" />
-    </div>
+    <q-separator class="q-my-lg" />
 
-    <div class="text-center ink-soft" style="font-size: 0.9rem">
-      {{ t('auth.newHere') }}
-      <a href="#" class="link" @click.prevent="$emit('register')">{{ t('auth.createAccount') }}</a>
+    <div class="text-center text-body2 text-grey-7">
+      {{ locale.t('auth.noAccount') }}
+      <a href="#" class="text-primary text-weight-bold text-decoration-none q-ml-xs" @click.prevent="$emit('register')">
+        {{ locale.t('auth.registerHere') }}
+      </a>
     </div>
   </q-card>
 </template>
@@ -61,14 +77,14 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useLocaleStore } from '@/stores/locale'
 import { emailRule, required } from '@/utils/validators'
-import { useI18n } from '@/composables/useI18n'
 
 defineEmits(['register'])
 
 const router = useRouter()
 const auth = useAuthStore()
-const { t } = useI18n()
+const locale = useLocaleStore()
 
 const email = ref('')
 const password = ref('')
@@ -82,47 +98,26 @@ function onSubmit() {
   const result = auth.login(email.value, password.value)
   loading.value = false
   if (!result.ok) {
-    error.value = t(`auth.error.${result.code}`)
+    error.value = locale.lang === 'bn' ? 'ইমেইল বা পাসওয়ার্ড সঠিক নয়।' : (result.message || 'Invalid email or password.')
     return
   }
   router.replace('/app')
 }
 </script>
 
-<style lang="scss" scoped>
+<style scoped>
 .auth-card {
   width: 100%;
-  max-width: 380px;
-  padding: 34px 32px;
+  max-width: 420px;
+  padding: 36px 32px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-card);
 }
 @media (max-width: 599px) {
   .auth-card {
-    padding: 26px 22px;
-    border-radius: 14px;
-  }
-}
-// Clear, even rhythm between fields so filled inputs never visually merge.
-.auth-form {
-  gap: 18px;
-}
-.auth-field {
-  // Filled inputs already carry their own bottom border; a touch of separation
-  // on top keeps each field reading as its own control rather than a stack.
-  border-radius: 8px;
-}
-.error-banner {
-  background: var(--clay-tint);
-  color: var(--clay);
-  border-radius: 8px;
-  padding: 9px 12px;
-  font-size: 0.86rem;
-}
-.link {
-  color: var(--paprika);
-  font-weight: 600;
-  text-decoration: none;
-  &:hover {
-    text-decoration: underline;
+    padding: 24px 20px;
   }
 }
 </style>

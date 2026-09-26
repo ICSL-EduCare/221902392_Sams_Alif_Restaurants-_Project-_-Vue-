@@ -1,97 +1,198 @@
 <template>
   <q-page class="q-pa-md q-pa-lg-lg page-shell">
-    <div class="row items-start justify-between q-mb-lg" style="gap: 12px">
+    <!-- Header section -->
+    <div class="row items-center justify-between q-mb-lg" style="gap: 12px">
       <div>
-        <div class="eyebrow">{{ t('restaurant.step1') }}</div>
-        <div class="page-title">{{ t('restaurant.yourRestaurant') }}</div>
-        <div class="page-subtitle q-mt-xs">
-          {{ t('restaurant.subtitle') }}
+        <div class="text-caption text-primary text-weight-bold text-uppercase">
+          {{ locale.t('setup.badge') }}
+        </div>
+        <div class="text-h4 text-weight-bolder">
+          {{ locale.t('setup.title') }}
+        </div>
+        <div class="text-body2 text-grey-6 q-mt-xs">
+          {{ locale.t('setup.subtitle') }}
         </div>
       </div>
-      <q-btn unelevated color="primary" class="stamp" icon="sym_o_add" :label="t('restaurant.addRestaurant')" @click="openAdd" />
-    </div>
-
-    <!-- Quick nav — same shortcuts as the sidebar, placed here per the setup-page spec -->
-    <div class="row q-mb-lg" style="gap: 10px" v-if="restaurants.length">
       <q-btn
-        v-for="n in quickNav"
-        :key="n.to"
-        outline
-        no-caps
-        class="stamp nav-chip"
-        :icon="n.icon"
-        :label="t(n.labelKey)"
-        :to="n.to"
+        unelevated
+        color="primary"
+        icon="sym_o_add"
+        :label="locale.t('setup.addBtn')"
+        class="text-weight-bold"
+        @click="openAdd"
       />
     </div>
 
-    <div v-if="!restaurants.length" class="empty-state surface-card q-pa-xl text-center">
-      <q-icon name="sym_o_storefront" size="40px" class="ink-faint q-mb-sm" />
-      <div class="font-display text-weight-bold" style="font-size: 1.1rem">{{ t('restaurant.emptyTitle') }}</div>
-      <div class="ink-soft q-mt-xs q-mb-md">{{ t('restaurant.emptyBody') }}</div>
-      <q-btn unelevated color="primary" class="stamp" :label="t('restaurant.addYourRestaurant')" @click="openAdd" />
+    <!-- Explicit Navigation Buttons as required by Step 2 in assignment PDF -->
+    <q-card flat bordered class="q-pa-md q-mb-xl bg-surface">
+      <div class="text-subtitle2 text-weight-bold text-grey-8 q-mb-sm">
+        {{ locale.t('setup.quickNav') }}
+      </div>
+      <div class="row q-gutter-sm">
+        <q-btn
+          outline
+          color="primary"
+          icon="sym_o_restaurant_menu"
+          :label="locale.t('setup.allItems')"
+          to="/app/items"
+          class="text-weight-bold"
+        />
+        <q-btn
+          outline
+          color="secondary"
+          icon="sym_o_point_of_sale"
+          :label="locale.t('setup.ordersPage')"
+          to="/app/orders"
+          class="text-weight-bold"
+        />
+        <q-btn
+          outline
+          color="accent"
+          icon="sym_o_receipt_long"
+          :label="locale.t('setup.invoicePage')"
+          to="/app/invoices"
+          class="text-weight-bold"
+        />
+      </div>
+    </q-card>
+
+    <!-- Empty State -->
+    <div v-if="!restaurants.length" class="text-center q-pa-xl surface-card empty-card">
+      <q-icon name="sym_o_storefront" size="56px" color="grey-5" class="q-mb-md" />
+      <div class="text-h6 text-weight-bold">{{ locale.t('setup.noRestaurant') }}</div>
+      <div class="text-body2 text-grey-6 q-my-sm">
+        {{ locale.t('setup.noRestaurantDesc') }}
+      </div>
+      <q-btn
+        unelevated
+        color="primary"
+        icon="sym_o_add"
+        :label="locale.t('setup.setUpBtn')"
+        class="q-mt-md"
+        @click="openAdd"
+      />
     </div>
 
-    <div v-else class="restaurant-grid">
-      <div
-        v-for="r in restaurants"
-        :key="r.id"
-        class="chit q-pa-md"
-        :class="{ 'is-active': r.id === store.activeId }"
-      >
-        <div class="row items-start no-wrap q-mt-sm" style="gap: 12px">
-          <q-avatar size="52px" square class="logo-preview">
-            <img v-if="r.logo" :src="r.logo" />
-            <q-icon v-else name="sym_o_storefront" size="24px" class="ink-faint" />
-          </q-avatar>
+    <!-- Restaurant Cards List -->
+    <div v-else class="row q-col-gutter-md">
+      <div v-for="r in restaurants" :key="r.id" class="col-12 col-md-6">
+        <q-card
+          flat
+          bordered
+          class="restaurant-card"
+          :class="{ 'active-restaurant': r.id === store.activeId }"
+        >
+          <q-card-section>
+            <div class="row items-start no-wrap" style="gap: 16px">
+              <q-avatar size="64px" rounded class="restaurant-logo">
+                <img v-if="r.logo" :src="r.logo" style="object-fit: cover;" />
+                <q-icon v-else name="sym_o_storefront" size="32px" color="primary" />
+              </q-avatar>
 
-          <div class="col min-width-0">
-            <div class="row items-center no-wrap" style="gap: 8px">
-              <div class="font-display text-weight-bold ellipsis" style="font-size: 1.05rem">
-                {{ r.name }}
+              <div class="col min-width-0">
+                <div class="row items-center justify-between no-wrap">
+                  <div class="text-h6 text-weight-bolder ellipsis">{{ r.name }}</div>
+                  <q-badge
+                    v-if="r.id === store.activeId"
+                    color="positive"
+                    :label="locale.t('setup.active')"
+                    class="q-px-sm text-weight-bold"
+                  />
+                </div>
+
+                <div class="text-body2 text-grey-7 q-mt-xs">
+                  <q-icon name="sym_o_location_on" size="16px" class="q-mr-xs text-grey-5" />
+                  {{ r.address }}
+                </div>
+                <div class="text-body2 text-grey-7 q-mt-xs font-mono">
+                  <q-icon name="sym_o_call" size="16px" class="q-mr-xs text-grey-5" />
+                  {{ r.phone }}
+                </div>
+
+                <div class="row items-center q-mt-sm" style="gap: 6px; flex-wrap: wrap;">
+                  <span class="text-caption text-weight-bold text-grey-6">{{ locale.t('setup.branches') }}</span>
+                  <q-chip
+                    v-for="branch in r.branches"
+                    :key="branch"
+                    dense
+                    color="primary"
+                    text-color="white"
+                    size="sm"
+                  >
+                    {{ branch }}
+                  </q-chip>
+                  <span v-if="!r.branches || !r.branches.length" class="text-caption text-grey-5">
+                    Main Branch
+                  </span>
+                </div>
               </div>
-              <q-badge v-if="r.id === store.activeId" class="active-badge" :label="t('restaurant.active')" />
             </div>
-            <div class="ink-soft q-mt-xs" style="font-size: 0.86rem">{{ r.address }}</div>
-            <div class="ink-soft font-mono" style="font-size: 0.82rem">{{ r.phone }}</div>
+          </q-card-section>
 
-            <div class="row q-mt-sm" style="gap: 6px; flex-wrap: wrap">
-              <span v-for="b in r.branches" :key="b" class="tone-chip tone-4">{{ b }}</span>
-              <span v-if="!r.branches.length" class="ink-faint" style="font-size: 0.8rem">{{ t('restaurant.noBranches') }}</span>
+          <q-separator />
+
+          <q-card-actions align="between" class="q-px-md">
+            <div>
+              <q-btn
+                v-if="r.id !== store.activeId"
+                flat
+                dense
+                no-caps
+                color="primary"
+                :label="locale.t('setup.setActive')"
+                class="text-weight-bold"
+                @click="store.setActive(r.id)"
+              />
             </div>
-          </div>
-        </div>
-
-        <q-separator class="hairline q-my-sm" />
-
-        <div class="row justify-end" style="gap: 4px">
-          <q-btn
-            v-if="r.id !== store.activeId"
-            flat
-            dense
-            no-caps
-            size="sm"
-            :label="t('restaurant.setActive')"
-            class="ink-soft"
-            @click="store.setActive(r.id)"
-          />
-          <q-btn flat round dense icon="sym_o_edit" size="sm" class="ink-soft" @click="openEdit(r)" />
-          <q-btn flat round dense icon="sym_o_delete_outline" size="sm" class="ink-soft" @click="confirmDelete(r)" />
-        </div>
+            <div class="row q-gutter-xs">
+              <q-btn
+                flat
+                round
+                dense
+                color="primary"
+                icon="sym_o_edit"
+                @click="openEdit(r)"
+              >
+                <q-tooltip>Edit</q-tooltip>
+              </q-btn>
+              <q-btn
+                flat
+                round
+                dense
+                color="negative"
+                icon="sym_o_delete"
+                @click="confirmDelete(r)"
+              >
+                <q-tooltip>Delete</q-tooltip>
+              </q-btn>
+            </div>
+          </q-card-actions>
+        </q-card>
       </div>
     </div>
 
+    <!-- Add/Edit Modal Dialog -->
     <RestaurantFormDialog v-model="dialogOpen" :restaurant="editingRestaurant" @submit="onSubmit" />
 
+    <!-- Delete Confirmation Dialog -->
     <q-dialog v-model="deleteOpen">
-      <q-card class="surface-card" style="min-width: 280px">
-        <q-card-section class="font-display text-weight-bold">{{ t('restaurant.deleteTitle') }}</q-card-section>
-        <q-card-section class="ink-soft q-pt-none">
-          {{ t('restaurant.deleteBody', { name: toDelete?.name }) }}
+      <q-card style="min-width: 320px; border-radius: 12px;">
+        <q-card-section class="row items-center" style="gap: 12px">
+          <q-avatar icon="sym_o_warning" color="negative" text-color="white" />
+          <div class="text-h6 text-weight-bold">Confirm Deletion</div>
+        </q-card-section>
+        <q-card-section class="q-pt-none text-grey-7">
+          Are you sure you want to remove <strong>{{ toDelete?.name }}</strong>?
         </q-card-section>
         <q-card-actions align="right">
-          <q-btn flat :label="t('common.cancel')" v-close-popup />
-          <q-btn unelevated color="negative" class="stamp" :label="t('common.delete')" v-close-popup @click="doDelete" />
+          <q-btn flat label="Cancel" v-close-popup />
+          <q-btn
+            unelevated
+            color="negative"
+            label="Delete"
+            v-close-popup
+            @click="doDelete"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -102,11 +203,11 @@
 import { computed, ref } from 'vue'
 import { Notify } from 'quasar'
 import { useRestaurantStore } from '@/stores/restaurants'
-import { useI18n } from '@/composables/useI18n'
+import { useLocaleStore } from '@/stores/locale'
 import RestaurantFormDialog from '@/components/restaurant/RestaurantFormDialog.vue'
 
 const store = useRestaurantStore()
-const { t } = useI18n()
+const locale = useLocaleStore()
 const restaurants = computed(() => store.list)
 
 const dialogOpen = ref(false)
@@ -114,72 +215,58 @@ const editingRestaurant = ref(null)
 const deleteOpen = ref(false)
 const toDelete = ref(null)
 
-const quickNav = [
-  { to: '/app/items', icon: 'sym_o_restaurant_menu', labelKey: 'nav.allItems' },
-  { to: '/app/orders', icon: 'sym_o_point_of_sale', labelKey: 'restaurant.navOrders' },
-  { to: '/app/invoices', icon: 'sym_o_receipt_long', labelKey: 'nav.invoices' },
-]
-
 function openAdd() {
   editingRestaurant.value = null
   dialogOpen.value = true
 }
+
 function openEdit(r) {
   editingRestaurant.value = r
   dialogOpen.value = true
 }
+
 function onSubmit(data) {
-  if (editingRestaurant.value) store.update(editingRestaurant.value.id, data)
-  else store.add(data)
+  if (editingRestaurant.value) {
+    store.update(editingRestaurant.value.id, data)
+    Notify.create({ type: 'positive', message: 'Restaurant updated successfully!' })
+  } else {
+    store.add(data)
+    Notify.create({ type: 'positive', message: 'Restaurant created successfully!' })
+  }
   dialogOpen.value = false
-  Notify.create({ type: 'positive', message: t('restaurant.savedToast') })
 }
+
 function confirmDelete(r) {
   toDelete.value = r
   deleteOpen.value = true
 }
+
 function doDelete() {
   store.remove(toDelete.value.id)
-  Notify.create({ message: t('restaurant.deletedToast') })
+  Notify.create({ type: 'info', message: 'Restaurant removed.' })
 }
 </script>
 
-<style lang="scss" scoped>
+<style scoped>
 .page-shell {
-  max-width: 980px;
+  max-width: 1040px;
   margin: 0 auto;
 }
-.nav-chip {
-  color: var(--ink-soft);
-  border-color: var(--line-strong);
+.restaurant-card {
+  border-radius: 14px;
+  transition: all 0.2s ease;
+  background: var(--surface);
 }
-.restaurant-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
+.restaurant-card.active-restaurant {
+  border: 2px solid var(--q-primary);
 }
-@media (max-width: 599px) {
-  .restaurant-grid {
-    grid-template-columns: 1fr;
-  }
-}
-.chit.is-active {
-  border-color: var(--paprika);
-}
-.logo-preview {
-  border-radius: 10px;
-  border: 1px solid var(--line);
+.restaurant-logo {
+  border-radius: 12px;
   background: var(--surface-sunken);
+  border: 1px solid var(--line);
 }
-.active-badge {
-  background: var(--basil-tint);
-  color: var(--basil);
-  font-weight: 600;
-  font-size: 0.68rem;
-  border-radius: 5px;
-}
-.empty-state {
-  max-width: 420px;
-  margin: 40px auto;
+.empty-card {
+  border-radius: 16px;
+  border: 2px dashed var(--line);
 }
 </style>

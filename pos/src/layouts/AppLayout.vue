@@ -1,112 +1,150 @@
 <template>
   <q-layout view="hHh lpR fFf">
-    <q-header elevated class="app-header">
+    <!-- Header -->
+    <q-header elevated class="bg-surface text-ink border-bottom">
       <q-toolbar class="q-px-md">
         <q-btn
-          v-if="$q.screen.lt.md"
           flat
           dense
           round
           icon="sym_o_menu"
-          class="q-mr-sm ink"
+          class="q-mr-sm"
           @click="drawer = !drawer"
         />
-        <div class="row items-center no-wrap" style="gap: 10px">
-          <q-avatar v-if="restaurant?.logo" size="30px" square class="logo-avatar">
-            <img :src="restaurant.logo" />
+
+        <!-- Brand / Restaurant Identity -->
+        <div class="row items-center no-wrap cursor-pointer" style="gap: 12px" @click="$router.push('/app/restaurant')">
+          <q-avatar v-if="restaurant?.logo" size="34px" rounded class="logo-avatar">
+            <img :src="restaurant.logo" style="object-fit: cover;" />
           </q-avatar>
-          <q-avatar v-else size="30px" square class="logo-avatar bg-tone text-white">
-            <span class="font-display text-weight-bold">{{ initials }}</span>
-          </q-avatar>
+          <q-avatar v-else size="34px" rounded color="primary" text-color="white" icon="sym_o_storefront" />
+
           <div>
-            <div class="font-display text-weight-bold ellipsis header-name" style="font-size: 1rem; line-height: 1.1">
-              {{ restaurant?.name || t('layout.setupPrompt') }}
+            <div class="text-subtitle1 text-weight-bolder ellipsis" style="line-height: 1.2;">
+              {{ restaurant?.name || 'Restaurant POS' }}
             </div>
-            <div v-if="branches.length" class="eyebrow">{{ activeBranch }}</div>
+            <div v-if="activeBranch" class="text-caption text-grey-6" style="line-height: 1;">
+              {{ activeBranch }}
+            </div>
           </div>
         </div>
 
         <q-space />
 
+        <!-- Branch Selector -->
         <q-select
           v-if="branches.length > 1"
           v-model="activeBranch"
           :options="branches"
           dense
-          filled
-          class="branch-select q-mr-sm gt-xs"
+          outlined
+          class="q-mr-md gt-xs"
           style="min-width: 150px"
         />
 
-        <LanguageSwitcher class="q-mr-sm gt-xs" />
+        <!-- Language Toggle (EN / বাংলা) -->
+        <q-btn
+          flat
+          dense
+          no-caps
+          class="q-mr-sm text-weight-bolder lang-toggle-btn"
+          @click="locale.toggle()"
+        >
+          <q-icon name="sym_o_translate" size="18px" class="q-mr-xs" />
+          <span style="font-size: 13px;">{{ locale.lang === 'en' ? 'বাংলা' : 'English' }}</span>
+          <q-tooltip>{{ locale.t('nav.langToggle') }}</q-tooltip>
+        </q-btn>
 
+        <!-- Light / Dark Mode Toggle (Quasar $q.dark) -->
         <q-btn
           flat
           round
           dense
-          :icon="theme.isDark ? 'sym_o_light_mode' : 'sym_o_dark_mode'"
-          class="ink q-mr-xs"
-          @click="theme.toggle()"
+          :icon="$q.dark.isActive ? 'sym_o_light_mode' : 'sym_o_dark_mode'"
+          class="q-mr-sm"
+          @click="toggleTheme"
         >
-          <q-tooltip>{{ theme.isDark ? t('layout.switchToLight') : t('layout.switchToDark') }}</q-tooltip>
+          <q-tooltip>{{ $q.dark.isActive ? locale.t('nav.lightMode') : locale.t('nav.darkMode') }}</q-tooltip>
         </q-btn>
 
-        <q-btn flat round dense icon="sym_o_logout" class="ink" @click="confirmLogout = true">
-          <q-tooltip>{{ t('layout.logout') }}</q-tooltip>
+        <!-- Logout Button -->
+        <q-btn flat round dense icon="sym_o_logout" color="negative" @click="confirmLogout = true">
+          <q-tooltip>{{ locale.t('nav.logout') }}</q-tooltip>
         </q-btn>
       </q-toolbar>
-
-      <div class="lang-row-mobile lt-sm">
-        <LanguageSwitcher />
-      </div>
     </q-header>
 
+    <!-- Navigation Drawer -->
     <q-drawer
       v-model="drawer"
-      :breakpoint="1005"
-      :width="220"
-      class="app-rail"
-      :show-if-above="$q.screen.gt.sm"
+      show-if-above
+      :width="240"
+      :breakpoint="768"
+      bordered
+      class="bg-surface text-ink"
     >
-      <q-list class="q-pa-sm">
+      <div class="q-pa-md">
+        <div class="text-caption text-primary text-weight-bold text-uppercase">
+          {{ locale.lang === 'bn' ? 'নেভিগেশন মেনু' : 'Navigation' }}
+        </div>
+      </div>
+
+      <q-list padding class="q-pt-none">
         <q-item
           v-for="link in links"
           :key="link.to"
           clickable
+          v-ripple
           :to="link.to"
           exact
-          active-class="rail-active"
-          class="rail-item q-mb-xs"
+          active-class="bg-primary-tint text-primary text-weight-bolder"
+          class="rounded-borders q-mx-sm q-mb-xs"
         >
-          <q-item-section avatar style="min-width: 34px">
-            <q-icon :name="link.icon" size="20px" />
+          <q-item-section avatar style="min-width: 40px">
+            <q-icon :name="link.icon" size="22px" />
           </q-item-section>
-          <q-item-section>{{ t(link.labelKey) }}</q-item-section>
+          <q-item-section class="text-body2">{{ link.label }}</q-item-section>
         </q-item>
       </q-list>
 
-      <q-space />
-
-      <div class="q-pa-md ink-faint eyebrow">Resto POS</div>
+      <div class="absolute-bottom q-pa-md text-caption text-grey-5 border-top">
+        Resto POS &bull; Retail Edition
+      </div>
     </q-drawer>
 
+    <!-- Page Content -->
     <q-page-container>
       <router-view />
     </q-page-container>
 
-    <q-footer v-if="$q.screen.lt.md" bordered class="bottom-tabs no-print">
-      <q-tabs active-color="primary" indicator-color="transparent" dense>
-        <q-route-tab v-for="link in links" :key="link.to" :to="link.to" :icon="link.icon" :label="t(link.shortLabelKey)" />
+    <!-- Mobile Bottom Tabs -->
+    <q-footer v-if="$q.screen.lt.md" bordered class="bg-surface text-ink no-print">
+      <q-tabs active-color="primary" indicator-color="primary" dense align="justify">
+        <q-route-tab
+          v-for="link in links"
+          :key="link.to"
+          :to="link.to"
+          :icon="link.icon"
+          :label="link.shortLabel"
+        />
       </q-tabs>
     </q-footer>
 
+    <!-- Sign Out Confirmation Modal -->
     <q-dialog v-model="confirmLogout">
-      <q-card class="surface-card" style="min-width: 280px">
-        <q-card-section class="font-display text-weight-bold">{{ t('layout.logoutConfirmTitle') }}</q-card-section>
-        <q-card-section class="ink-soft q-pt-none">{{ t('layout.logoutConfirmBody') }}</q-card-section>
+      <q-card style="min-width: 300px; border-radius: 12px;">
+        <q-card-section class="row items-center" style="gap: 12px">
+          <q-avatar icon="sym_o_logout" color="negative" text-color="white" />
+          <div class="text-h6 text-weight-bold">
+            {{ locale.lang === 'bn' ? 'লগআউট নিশ্চিতকরণ' : 'Sign Out' }}
+          </div>
+        </q-card-section>
+        <q-card-section class="q-pt-none text-grey-7">
+          {{ locale.lang === 'bn' ? 'আপনি কি আপনার সেশন শেষ করে লগআউট করতে চান?' : 'Are you sure you want to end your session?' }}
+        </q-card-section>
         <q-card-actions align="right">
-          <q-btn flat :label="t('common.cancel')" v-close-popup />
-          <q-btn unelevated color="primary" class="stamp" :label="t('layout.logout')" v-close-popup @click="doLogout" />
+          <q-btn flat :label="locale.lang === 'bn' ? 'বাতিল' : 'Cancel'" v-close-popup />
+          <q-btn unelevated color="negative" :label="locale.lang === 'bn' ? 'লগআউট' : 'Sign Out'" v-close-popup @click="onLogout" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -114,92 +152,88 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useQuasar } from 'quasar'
 import { useAuthStore } from '@/stores/auth'
 import { useRestaurantStore } from '@/stores/restaurants'
 import { useThemeStore } from '@/stores/theme'
-import { useI18n } from '@/composables/useI18n'
-import LanguageSwitcher from '@/components/common/LanguageSwitcher.vue'
+import { useLocaleStore } from '@/stores/locale'
 
+const $q = useQuasar()
 const router = useRouter()
 const auth = useAuthStore()
 const restaurantStore = useRestaurantStore()
 const theme = useThemeStore()
-const { t } = useI18n()
+const locale = useLocaleStore()
 
-const drawer = ref(false)
+const drawer = ref(true)
 const confirmLogout = ref(false)
 
 const restaurant = computed(() => restaurantStore.active)
 const branches = computed(() => restaurant.value?.branches ?? [])
-const activeBranch = computed({
-  get: () => branches.value[0] ?? '',
-  set: () => {},
-})
-const initials = computed(() =>
-  (restaurant.value?.name || 'RP')
-    .split(/\s+/)
-    .map((w) => w[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase(),
+const activeBranch = ref(branches.value[0] || '')
+
+watch(
+  branches,
+  (b) => {
+    if (!b.includes(activeBranch.value)) {
+      activeBranch.value = b[0] || ''
+    }
+  },
+  { immediate: true },
 )
 
-const links = [
-  { to: '/app/restaurant', icon: 'sym_o_storefront', labelKey: 'nav.restaurantSetup', shortLabelKey: 'nav.setup' },
-  { to: '/app/items', icon: 'sym_o_restaurant_menu', labelKey: 'nav.allItems', shortLabelKey: 'nav.items' },
-  { to: '/app/orders', icon: 'sym_o_point_of_sale', labelKey: 'nav.newOrder', shortLabelKey: 'nav.order' },
-  { to: '/app/invoices', icon: 'sym_o_receipt_long', labelKey: 'nav.invoices', shortLabelKey: 'nav.invoices' },
-]
+const links = computed(() => [
+  {
+    to: '/app/restaurant',
+    icon: 'sym_o_storefront',
+    label: locale.t('nav.setup'),
+    shortLabel: locale.lang === 'bn' ? 'সেটআপ' : 'Setup',
+  },
+  {
+    to: '/app/items',
+    icon: 'sym_o_restaurant_menu',
+    label: locale.t('nav.items'),
+    shortLabel: locale.lang === 'bn' ? 'মেনু' : 'Items',
+  },
+  {
+    to: '/app/orders',
+    icon: 'sym_o_point_of_sale',
+    label: locale.t('nav.orders'),
+    shortLabel: locale.lang === 'bn' ? 'অর্ডার' : 'Orders',
+  },
+  {
+    to: '/app/invoices',
+    icon: 'sym_o_receipt_long',
+    label: locale.t('nav.invoices'),
+    shortLabel: locale.lang === 'bn' ? 'ইনভয়েস' : 'Invoices',
+  },
+])
 
-function doLogout() {
+function toggleTheme() {
+  theme.toggle()
+}
+
+function onLogout() {
   auth.logout()
   router.replace('/')
 }
 </script>
 
-<style lang="scss" scoped>
-.app-header {
-  background: var(--surface);
-  color: var(--ink);
+<style scoped>
+.border-bottom {
   border-bottom: 1px solid var(--line);
 }
-.app-rail {
-  background: var(--bg);
-  border-right: 1px solid var(--line);
+.border-top {
+  border-top: 1px solid var(--line);
 }
-.rail-item {
-  border-radius: 8px;
-  color: var(--ink-soft);
-  &:hover {
-    background: var(--surface-sunken);
-  }
-}
-.rail-active {
-  background: var(--surface-sunken);
-  color: var(--paprika);
-  font-weight: 600;
+.bg-primary-tint {
+  background: rgba(168, 67, 42, 0.12);
 }
 .logo-avatar {
-  border-radius: 7px;
-  overflow: hidden;
-  background: var(--paprika);
-}
-.header-name {
-  max-width: 46vw;
-}
-.bottom-tabs {
-  background: var(--surface);
-  border-top: 1px solid var(--line);
-}
-.branch-select {
   border-radius: 8px;
-}
-.lang-row-mobile {
-  display: flex;
-  justify-content: flex-end;
-  padding: 4px 12px 8px;
-  border-top: 1px solid var(--line);
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
 }
 </style>

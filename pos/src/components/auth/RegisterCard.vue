@@ -1,71 +1,108 @@
 <template>
-  <q-card flat class="auth-card glass-card">
-    <div class="row items-center no-wrap q-mb-lg" style="gap: 8px">
-      <q-btn flat round dense icon="sym_o_arrow_back" size="sm" class="ink" @click="$emit('back')" />
+  <q-card flat class="auth-card">
+    <div class="row items-center no-wrap q-mb-md" style="gap: 8px">
+      <q-btn flat round dense icon="sym_o_arrow_back" color="primary" @click="$emit('back')" />
       <div>
-        <div class="eyebrow">{{ t('auth.createAccountTitle') }}</div>
-        <div class="page-title" style="font-size: 1.4rem">{{ t('auth.joinCounter') }}</div>
+        <div class="text-caption text-primary text-weight-bold text-uppercase">
+          {{ locale.t('auth.newAccount') }}
+        </div>
+        <div class="text-h5 text-weight-bolder">
+          {{ locale.t('auth.createAccount') }}
+        </div>
       </div>
     </div>
 
-    <q-form class="column auth-form" @submit.prevent="onSubmit">
-      <q-input v-model="name" filled class="auth-field" :label="t('auth.fullName')" :rules="[required(t('auth.nameRequired'))]" lazy-rules />
+    <q-form class="column q-gutter-y-sm" @submit.prevent="onSubmit">
       <q-input
-        v-model="email"
-        filled
-        class="auth-field"
-        :label="t('auth.email')"
-        type="email"
-        :rules="[required(t('auth.emailRequired')), emailRule]"
-        lazy-rules
-      />
-      <q-input
-        v-model="phone"
-        filled
-        class="auth-field"
-        :label="t('auth.phoneNumber')"
-        :rules="[required(t('auth.phoneRequired')), phoneRule]"
-        lazy-rules
-      />
-      <q-input
-        v-model="password"
-        filled
-        :type="showPassword ? 'text' : 'password'"
-        class="auth-field"
-        :label="t('auth.password')"
-        :rules="[required(t('auth.choosePassword')), minLength(6)]"
+        v-model="name"
+        outlined
+        dense
+        :label="locale.t('auth.fullName') + ' *'"
+        :rules="[required('Full Name is required')]"
         lazy-rules
       >
+        <template #prepend><q-icon name="sym_o_person" /></template>
+      </q-input>
+
+      <q-input
+        v-model="email"
+        outlined
+        dense
+        :label="locale.t('auth.email') + ' *'"
+        type="email"
+        :rules="[required('Email is required'), emailRule]"
+        lazy-rules
+      >
+        <template #prepend><q-icon name="sym_o_mail" /></template>
+      </q-input>
+
+      <q-input
+        v-model="phone"
+        outlined
+        dense
+        :label="locale.t('auth.phone') + ' *'"
+        :rules="[required('Phone number is required'), phoneRule]"
+        lazy-rules
+      >
+        <template #prepend><q-icon name="sym_o_call" /></template>
+      </q-input>
+
+      <q-input
+        v-model="password"
+        outlined
+        dense
+        :type="showPassword ? 'text' : 'password'"
+        :label="locale.t('auth.password') + ' *'"
+        :rules="[required('Password is required'), minLength(6)]"
+        lazy-rules
+      >
+        <template #prepend><q-icon name="sym_o_lock" /></template>
         <template #append>
           <q-icon
             :name="showPassword ? 'sym_o_visibility_off' : 'sym_o_visibility'"
-            class="cursor-pointer ink-faint"
+            class="cursor-pointer"
             @click="showPassword = !showPassword"
           />
         </template>
       </q-input>
+
       <q-input
         v-model="confirm"
-        filled
+        outlined
+        dense
         :type="showPassword ? 'text' : 'password'"
-        class="auth-field"
-        :label="t('auth.confirmPassword')"
-        :rules="[required(t('auth.confirmPasswordRequired')), sameAs(() => password, t('auth.passwordMismatch'))]"
+        :label="locale.t('auth.confirmPassword') + ' *'"
+        :rules="[required('Confirm password is required'), sameAs(() => password, 'Passwords do not match')]"
         lazy-rules
-      />
+      >
+        <template #prepend><q-icon name="sym_o_lock_clock" /></template>
+      </q-input>
 
-      <div v-if="error" class="error-banner q-mt-sm">{{ error }}</div>
+      <q-banner v-if="error" dense rounded class="bg-red-1 text-negative q-mt-xs">
+        <template #avatar>
+          <q-icon name="sym_o_error" color="negative" />
+        </template>
+        {{ error }}
+      </q-banner>
 
       <q-btn
         type="submit"
         unelevated
         color="primary"
-        class="stamp q-mt-md"
-        size="md"
+        size="lg"
+        class="full-width q-mt-md text-weight-bold"
         :loading="loading"
-        :label="t('auth.createAccountTitle')"
+        :label="locale.t('auth.completeReg')"
+        icon-right="sym_o_how_to_reg"
       />
     </q-form>
+
+    <div class="text-center text-body2 text-grey-7 q-mt-md">
+      {{ locale.t('auth.hasAccount') }}
+      <a href="#" class="text-primary text-weight-bold text-decoration-none q-ml-xs" @click.prevent="$emit('back')">
+        {{ locale.t('auth.signInLink') }}
+      </a>
+    </div>
   </q-card>
 </template>
 
@@ -73,13 +110,13 @@
 import { ref } from 'vue'
 import { Notify } from 'quasar'
 import { useAuthStore } from '@/stores/auth'
+import { useLocaleStore } from '@/stores/locale'
 import { emailRule, minLength, phoneRule, required, sameAs } from '@/utils/validators'
-import { useI18n } from '@/composables/useI18n'
 
 const emit = defineEmits(['back'])
 
 const auth = useAuthStore()
-const { t } = useI18n()
+const locale = useLocaleStore()
 
 const name = ref('')
 const email = ref('')
@@ -93,40 +130,39 @@ const error = ref('')
 function onSubmit() {
   error.value = ''
   loading.value = true
-  const result = auth.register({ name: name.value, email: email.value, password: password.value, phone: phone.value })
+  const result = auth.register({
+    name: name.value,
+    email: email.value,
+    password: password.value,
+    phone: phone.value,
+  })
   loading.value = false
   if (!result.ok) {
-    error.value = t(`auth.error.${result.code}`)
+    error.value = locale.lang === 'bn' ? 'এই ইমেইল দিয়ে ইতোমধ্যে একটি অ্যাকাউন্ট রয়েছে।' : (result.message || 'Registration failed.')
     return
   }
-  Notify.create({ type: 'positive', message: t('auth.accountCreated') })
+  Notify.create({
+    type: 'positive',
+    message: locale.lang === 'bn' ? 'রেজিস্ট্রেশন সফল হয়েছে! দয়া করে লগইন করুন।' : 'Account registered successfully! Please sign in.',
+    position: 'top',
+  })
   emit('back')
 }
 </script>
 
-<style lang="scss" scoped>
+<style scoped>
 .auth-card {
   width: 100%;
-  max-width: 380px;
-  padding: 34px 32px;
+  max-width: 440px;
+  padding: 30px 28px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-card);
 }
 @media (max-width: 599px) {
   .auth-card {
-    padding: 26px 22px;
-    border-radius: 14px;
+    padding: 20px 16px;
   }
-}
-.auth-form {
-  gap: 18px;
-}
-.auth-field {
-  border-radius: 8px;
-}
-.error-banner {
-  background: var(--clay-tint);
-  color: var(--clay);
-  border-radius: 8px;
-  padding: 9px 12px;
-  font-size: 0.86rem;
 }
 </style>

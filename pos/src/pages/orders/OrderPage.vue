@@ -1,121 +1,294 @@
 <template>
   <q-page class="q-pa-md q-pa-lg-lg">
-    <div class="order-shell">
-      <!-- Menu picker -->
-      <div class="menu-side">
-        <div class="eyebrow">{{ t('orders.eyebrow') }}</div>
-        <div class="page-title q-mb-md">{{ t('orders.pickItems') }}</div>
-
-        <div class="row q-mb-md items-center" style="gap: 10px">
-          <q-input v-model="search" filled dense class="col search-input" :placeholder="t('orders.searchMenu')" clearable>
-            <template #prepend><q-icon name="sym_o_search" /></template>
-          </q-input>
-          <q-select
-            v-model="categoryFilter"
-            filled
-            dense
-            emit-value
-            map-options
-            :options="filterOptions"
-            style="min-width: 160px"
-            class="col-auto"
-          />
-        </div>
-
-        <div v-if="!menu.items.length" class="empty-state surface-card q-pa-xl text-center">
-          <q-icon name="sym_o_restaurant_menu" size="36px" class="ink-faint q-mb-sm" />
-          <div class="ink-soft">{{ t('orders.emptyMenu') }}</div>
-          <q-btn flat no-caps color="primary" class="q-mt-sm" to="/app/items" :label="t('orders.goToItems')" />
-        </div>
-
-        <div v-else class="item-grid">
-          <div
-            v-for="it in filtered"
-            :key="it.id"
-            class="chit menu-chit"
-            :class="toneClass(it.category)"
-          >
-            <div class="tone-chit-bar tone-bar" />
-            <div class="q-pa-sm q-pl-md">
-              <div class="font-display text-weight-bold ellipsis" style="font-size: 0.95rem">{{ it.name }}</div>
-              <span class="tone-chip q-mt-xs">{{ it.category }}</span>
-              <div class="row items-center justify-between q-mt-sm">
-                <div class="font-mono" style="font-weight: 600">{{ formatMoney(it.price) }}</div>
-                <div v-if="orders.qtyInCart(it.id)" class="row items-center no-wrap qty-stepper">
-                  <q-btn flat dense round size="sm" icon="sym_o_remove" @click="orders.changeQty(it.id, -1)" />
-                  <span class="font-mono q-mx-xs">{{ orders.qtyInCart(it.id) }}</span>
-                  <q-btn flat dense round size="sm" icon="sym_o_add" @click="orders.changeQty(it.id, 1)" />
-                </div>
-                <q-btn v-else round dense unelevated color="primary" icon="sym_o_add" size="sm" @click="orders.addToCart(it)" />
-              </div>
+    <div class="order-container row q-col-gutter-lg items-start">
+      <!-- Left side: Menu items selection -->
+      <div class="col-12 col-lg-8">
+        <div class="row items-center justify-between q-mb-md">
+          <div>
+            <div class="text-caption text-primary text-weight-bold text-uppercase">
+              {{ locale.t('orders.badge') }}
             </div>
+            <div class="text-h4 text-weight-bolder">
+              {{ locale.t('orders.title') }}
+            </div>
+            <div class="text-body2 text-grey-6">
+              {{ locale.t('orders.subtitle') }}
+            </div>
+          </div>
+        </div>
+
+        <!-- Search & Category Filter -->
+        <div class="row q-col-gutter-sm q-mb-md">
+          <div class="col-12 col-sm-8">
+            <q-input
+              v-model="search"
+              outlined
+              dense
+              :placeholder="locale.t('orders.searchPlaceholder')"
+              clearable
+            >
+              <template #prepend><q-icon name="sym_o_search" /></template>
+            </q-input>
+          </div>
+          <div class="col-12 col-sm-4">
+            <q-select
+              v-model="categoryFilter"
+              outlined
+              dense
+              emit-value
+              map-options
+              :options="filterOptions"
+              label="Category"
+            >
+              <template #prepend><q-icon name="sym_o_filter_list" /></template>
+            </q-select>
+          </div>
+        </div>
+
+        <!-- Interactive Visual Table Map (Unique Feature & Conflict Prevention) -->
+        <q-card flat bordered class="q-pa-md q-mb-md bg-surface table-map-card">
+          <div class="row items-center justify-between q-mb-sm">
+            <div class="row items-center" style="gap: 8px">
+              <q-icon name="sym_o_table_restaurant" color="primary" size="20px" />
+              <span class="text-subtitle2 text-weight-bold">{{ locale.t('orders.tableMapTitle') }}</span>
+            </div>
+            <div class="row items-center q-gutter-sm text-caption">
+              <span class="row items-center"><span class="table-legend-dot bg-positive q-mr-xs" /> {{ locale.t('orders.tableStatusFree') }}</span>
+              <span class="row items-center"><span class="table-legend-dot bg-negative q-mr-xs" /> {{ locale.t('orders.tableStatusBusy') }}</span>
+            </div>
+          </div>
+
+          <div class="row q-gutter-xs">
+            <q-btn
+              v-for="tNum in quickTables"
+              :key="tNum"
+              dense
+              :color="isTableOccupied(tNum) ? 'negative' : (table === String(tNum) ? 'primary' : 'grey-3')"
+              :text-color="isTableOccupied(tNum) ? 'white' : (table === String(tNum) ? 'white' : 'black')"
+              :icon="isTableOccupied(tNum) ? 'sym_o_lock' : 'sym_o_chair'"
+              class="q-px-sm text-weight-bold"
+              style="font-size: 0.78rem; border-radius: 8px;"
+              @click="selectTable(tNum)"
+            >
+              T-{{ tNum }}
+              <q-tooltip v-if="isTableOccupied(tNum)">
+                {{ locale.t('orders.tableOccupiedBy', { name: getOccupantName(tNum) }) }}
+              </q-tooltip>
+            </q-btn>
+          </div>
+        </q-card>
+
+        <!-- Empty Menu Warning -->
+        <div v-if="!menu.items.length" class="text-center q-pa-xl surface-card empty-card">
+          <q-icon name="sym_o_restaurant_menu" size="56px" color="grey-5" class="q-mb-md" />
+          <div class="text-h6 text-weight-bold">Menu is Empty</div>
+          <div class="text-body2 text-grey-6 q-my-sm">
+            Please add menu items or load the starter menu first.
+          </div>
+          <q-btn unelevated color="primary" label="Load Starter Menu" @click="menu.addSamples()" class="q-mt-sm" />
+        </div>
+
+        <!-- Menu Item Cards Grid WITH PICTURES -->
+        <div v-else class="row q-col-gutter-sm">
+          <div v-for="it in filtered" :key="it.id" class="col-12 col-sm-6 col-md-4">
+            <q-card
+              flat
+              bordered
+              class="pos-item-card cursor-pointer overflow-hidden"
+              :class="{ 'in-cart': orders.qtyInCart(it.id) > 0 }"
+              @click="orders.addToCart(it)"
+            >
+              <!-- Food Image Thumbnail -->
+              <q-img
+                :src="it.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&auto=format&fit=crop&q=80'"
+                style="height: 120px;"
+                fit="cover"
+              >
+                <div class="absolute-bottom-left text-caption text-weight-bold q-pa-xs">
+                  {{ locale.getItemCategory(it) }}
+                </div>
+              </q-img>
+
+              <q-card-section class="q-pa-sm">
+                <div class="row items-center justify-between no-wrap">
+                  <div class="text-subtitle2 text-weight-bolder ellipsis col" :title="locale.getItemName(it)">
+                    {{ locale.getItemName(it) }}
+                  </div>
+                </div>
+
+                <div class="row items-center justify-between q-mt-xs">
+                  <span class="text-weight-bolder text-primary font-mono" style="font-size: 1.05rem;">
+                    {{ formatMoney(it.price) }}
+                  </span>
+
+                  <!-- Cart Controls / Add Button -->
+                  <div v-if="orders.qtyInCart(it.id) > 0" class="row items-center no-wrap q-gutter-xs" @click.stop>
+                    <q-btn flat round dense size="xs" icon="sym_o_remove" color="primary" @click="orders.changeQty(it.id, -1)" />
+                    <span class="font-mono text-weight-bold q-px-xs text-primary">{{ orders.qtyInCart(it.id) }}</span>
+                    <q-btn flat round dense size="xs" icon="sym_o_add" color="primary" @click="orders.changeQty(it.id, 1)" />
+                  </div>
+                  <q-btn
+                    v-else
+                    round
+                    dense
+                    unelevated
+                    size="sm"
+                    color="primary"
+                    icon="sym_o_add_shopping_cart"
+                    @click.stop="orders.addToCart(it)"
+                  />
+                </div>
+              </q-card-section>
+            </q-card>
           </div>
         </div>
       </div>
 
-      <!-- Ticket -->
-      <div class="ticket-side">
-        <div class="chit ticket q-pa-md">
-          <div class="row items-center justify-between q-mb-sm">
-            <div class="font-display text-weight-bold">{{ t('orders.ticket') }}</div>
-            <q-badge v-if="orders.cartCount" class="count-badge" :label="t('orders.itemsCount', { n: orders.cartCount })" />
-          </div>
+      <!-- Right side: Chosen Items & Customer / Seating Input (POS Ticket) -->
+      <div class="col-12 col-lg-4">
+        <q-card flat bordered class="ticket-card sticky-ticket">
+          <q-card-section class="bg-primary text-white q-py-sm">
+            <div class="row items-center justify-between">
+              <div class="row items-center" style="gap: 8px">
+                <q-icon name="sym_o_receipt_long" size="24px" />
+                <span class="text-subtitle1 text-weight-bold">{{ locale.t('orders.currentOrder') }}</span>
+              </div>
+              <q-badge color="white" text-color="primary" :label="locale.t('orders.itemsCount', { count: orders.cartCount })" class="text-weight-bold" />
+            </div>
+          </q-card-section>
 
-          <div v-if="!orders.cart.length" class="ink-faint text-center q-py-lg" style="font-size: 0.88rem">
-            {{ t('orders.tapToAdd') }}
-          </div>
+          <!-- Cart Lines -->
+          <q-card-section class="q-pa-md">
+            <div v-if="!orders.cart.length" class="text-center q-py-lg text-grey-5">
+              <q-icon name="sym_o_shopping_basket" size="44px" class="q-mb-xs text-grey-4" />
+              <div class="text-subtitle2">{{ locale.t('orders.noItems') }}</div>
+              <div class="text-caption">{{ locale.t('orders.tapToAdd') }}</div>
+            </div>
 
-          <template v-else>
-            <div v-for="line in orders.cart" :key="line.itemId" class="ticket-line">
-              <div class="col">
-                <div style="font-size: 0.9rem">{{ line.name }}</div>
-                <div class="ink-faint font-mono" style="font-size: 0.78rem">
-                  {{ line.qty }} &times; {{ formatMoney(line.price) }}
+            <div v-else>
+              <div class="cart-items-list q-mb-sm">
+                <div v-for="line in orders.cart" :key="line.itemId" class="row items-center justify-between q-py-xs border-bottom">
+                  <div class="col q-pr-sm">
+                    <div class="text-body2 text-weight-bold ellipsis">{{ line.name }}</div>
+                    <div class="text-caption text-grey-6 font-mono">
+                      {{ line.qty }} &times; {{ formatMoney(line.price) }}
+                    </div>
+                  </div>
+
+                  <!-- Qty Steppers -->
+                  <div class="row items-center no-wrap q-gutter-xs">
+                    <q-btn flat round dense size="sm" icon="sym_o_remove" color="primary" @click="orders.changeQty(line.itemId, -1)" />
+                    <span class="font-mono text-weight-bold q-px-xs">{{ line.qty }}</span>
+                    <q-btn flat round dense size="sm" icon="sym_o_add" color="primary" @click="orders.changeQty(line.itemId, 1)" />
+                    <q-btn flat round dense size="xs" icon="sym_o_close" color="negative" class="q-ml-xs" @click="orders.removeLine(line.itemId)" />
+                  </div>
                 </div>
               </div>
-              <div class="font-mono" style="font-size: 0.9rem">{{ formatMoney(line.price * line.qty) }}</div>
-              <q-btn flat round dense size="xs" icon="sym_o_close" class="ink-faint" @click="orders.removeLine(line.itemId)" />
-            </div>
 
-            <hr class="receipt-rule" />
-            <div class="totals-row"><span>{{ t('orders.subtotal') }}</span><span class="font-mono">{{ formatMoney(orders.subtotal) }}</span></div>
-            <div class="totals-row ink-soft" style="font-size: 0.86rem">
-              <span>{{ t('orders.vat', { rate: Math.round(taxRate * 1000) / 10 }) }}</span><span class="font-mono">{{ formatMoney(orders.tax) }}</span>
-            </div>
-            <hr class="receipt-rule" />
-            <div class="totals-row total-row"><span>{{ t('orders.total') }}</span><span class="font-mono">{{ formatMoney(orders.total) }}</span></div>
-
-            <q-separator class="hairline q-my-md" />
-
-            <q-form class="column" style="gap: 4px" @submit.prevent="onSubmit">
-              <q-input v-model="customerName" filled dense :label="t('orders.customerName')" :rules="[required(t('orders.customerNameRequired'))]" lazy-rules />
-              <q-input v-model="phone" filled dense :label="t('orders.phoneNumber')" :rules="[phoneRule]" lazy-rules />
-              <div class="row" style="gap: 8px">
-                <q-input v-model="table" filled dense class="col" :label="t('orders.tableNumber')" :rules="[required(t('orders.tableNumberRequired'))]" lazy-rules />
-                <q-input v-model="seat" filled dense class="col" :label="t('orders.seatNumber')" />
+              <!-- Price Breakdown -->
+              <q-separator class="q-my-xs" />
+              <div class="row justify-between text-body2 q-py-xs">
+                <span class="text-grey-7">{{ locale.t('orders.subtotal') }}</span>
+                <span class="font-mono text-weight-medium">{{ formatMoney(orders.subtotal) }}</span>
               </div>
+              <div class="row justify-between text-body2 q-py-xs">
+                <span class="text-grey-7">{{ locale.t('orders.vat', { rate: Math.round(taxRate * 100) }) }}</span>
+                <span class="font-mono text-grey-8">{{ formatMoney(orders.tax) }}</span>
+              </div>
+              <q-separator class="q-my-xs" />
+              <div class="row justify-between text-h6 text-weight-bolder text-primary q-py-xs">
+                <span>{{ locale.t('orders.total') }}</span>
+                <span class="font-mono">{{ formatMoney(orders.total) }}</span>
+              </div>
+            </div>
+          </q-card-section>
+
+          <!-- Input Fields as required by Step 4 -->
+          <q-separator />
+          <q-card-section class="q-pa-md">
+            <div class="text-caption text-weight-bold text-uppercase text-grey-7 q-mb-sm">
+              {{ locale.t('orders.customerDetails') }}
+            </div>
+            <q-form class="column q-gutter-y-sm" @submit.prevent="onSubmit">
+              <q-input
+                v-model="customerName"
+                outlined
+                dense
+                :label="locale.t('orders.customerName')"
+                :rules="[required('Customer name is required')]"
+                lazy-rules
+              >
+                <template #prepend><q-icon name="sym_o_person" /></template>
+              </q-input>
+
+              <q-input
+                v-model="phone"
+                outlined
+                dense
+                :label="locale.t('orders.phone')"
+                :rules="[required('Phone number is required'), phoneRule]"
+                lazy-rules
+              >
+                <template #prepend><q-icon name="sym_o_call" /></template>
+              </q-input>
+
+              <div class="row q-col-gutter-xs">
+                <div class="col-6">
+                  <q-input
+                    v-model="table"
+                    outlined
+                    dense
+                    :label="locale.t('orders.tableNo')"
+                    :rules="[required('Table is required')]"
+                    lazy-rules
+                  >
+                    <template #prepend><q-icon name="sym_o_table_restaurant" /></template>
+                  </q-input>
+                </div>
+                <div class="col-6">
+                  <q-input
+                    v-model="seat"
+                    outlined
+                    dense
+                    :label="locale.t('orders.seatNo')"
+                  >
+                    <template #prepend><q-icon name="sym_o_chair" /></template>
+                  </q-input>
+                </div>
+              </div>
+
               <q-select
                 v-if="branches.length > 1"
                 v-model="branch"
-                filled
+                outlined
                 dense
                 :options="branches"
-                :label="t('orders.branch')"
-              />
+                :label="locale.t('orders.selectBranch')"
+              >
+                <template #prepend><q-icon name="sym_o_apartment" /></template>
+              </q-select>
 
-              <div v-if="error" class="error-banner q-mt-xs">{{ error }}</div>
+              <!-- Conflict error banner showing customer name (Requirement 4) -->
+              <q-banner v-if="error" dense rounded class="bg-red-1 text-negative q-mt-xs">
+                <template #avatar>
+                  <q-icon name="sym_o_report" color="negative" />
+                </template>
+                {{ error }}
+              </q-banner>
 
               <q-btn
                 type="submit"
                 unelevated
                 color="primary"
-                class="stamp q-mt-sm"
+                size="lg"
+                class="full-width q-mt-md text-weight-bold"
                 icon="sym_o_receipt_long"
-                :label="t('orders.placeOrder')"
+                :label="locale.t('orders.submitBtn')"
+                :disable="!orders.cart.length"
               />
             </q-form>
-          </template>
-        </div>
+          </q-card-section>
+        </q-card>
       </div>
     </div>
   </q-page>
@@ -124,162 +297,162 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { Notify } from 'quasar'
 import { useMenuStore } from '@/stores/menu'
 import { useOrderStore } from '@/stores/orders'
 import { useRestaurantStore } from '@/stores/restaurants'
+import { useLocaleStore } from '@/stores/locale'
 import { formatMoney } from '@/utils/money'
-import { toneClass } from '@/utils/tone'
 import { required, phoneRule } from '@/utils/validators'
-import { useI18n } from '@/composables/useI18n'
 import { TAX_RATE } from '@/config'
 
 const router = useRouter()
 const menu = useMenuStore()
 const orders = useOrderStore()
 const restaurantStore = useRestaurantStore()
-const { t } = useI18n()
+const locale = useLocaleStore()
 
 const taxRate = TAX_RATE
 const search = ref('')
 const categoryFilter = ref('all')
 
 const filterOptions = computed(() => [
-  { label: t('orders.allCategories'), value: 'all' },
+  { label: locale.t('items.allCategories'), value: 'all' },
   ...menu.usedCategories.map((c) => ({ label: c, value: c })),
 ])
+
 const filtered = computed(() => {
   const needle = search.value?.trim().toLowerCase() ?? ''
   return menu.items.filter((it) => {
-    const matchesSearch = !needle || it.name.toLowerCase().includes(needle)
+    const matchesSearch =
+      !needle ||
+      it.name.toLowerCase().includes(needle) ||
+      (it.nameBn && it.nameBn.toLowerCase().includes(needle))
     const matchesCategory = categoryFilter.value === 'all' || it.category === categoryFilter.value
     return matchesSearch && matchesCategory
   })
 })
+
+const quickTables = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+function isTableOccupied(tNum) {
+  return Boolean(orders.tableStatusMap[String(tNum)])
+}
+
+function getOccupantName(tNum) {
+  return orders.tableStatusMap[String(tNum)]?.customerName || 'Guest'
+}
+
+function selectTable(tNum) {
+  const tStr = String(tNum)
+  if (isTableOccupied(tNum)) {
+    const occupant = getOccupantName(tNum)
+    Notify.create({
+      type: 'warning',
+      message:
+        locale.lang === 'bn'
+          ? `টেবিল ${tNum} ইতোমধ্যে "${occupant}" এর নামে বুক করা আছে!`
+          : `Table ${tNum} is currently reserved by "${occupant}".`,
+    })
+  } else {
+    table.value = tStr
+    seat.value = '1'
+    Notify.create({
+      type: 'positive',
+      message: locale.lang === 'bn' ? `টেবিল ${tNum} নির্বাচিত হয়েছে` : `Table ${tNum} selected.`,
+    })
+  }
+}
 
 const branches = computed(() => restaurantStore.active?.branches ?? [])
 const branch = ref('')
 
 const customerName = ref('')
 const phone = ref('')
-const table = ref('')
-const seat = ref('')
+const table = ref('1')
+const seat = ref('1')
 const error = ref('')
 
 function onSubmit() {
   error.value = ''
   if (!orders.cart.length) {
-    error.value = t('orders.errorAddItem')
+    error.value = locale.lang === 'bn' ? 'দয়া করে কার্টে অন্তত একটি আইটেম যোগ করুন।' : 'Please add at least one item to the cart.'
     return
   }
+
   const result = orders.placeOrder({
     customerName: customerName.value,
     phone: phone.value,
     table: table.value,
-    seat: seat.value,
-    branch: branch.value || branches.value[0] || '',
+    seat: seat.value || '1',
+    branch: branch.value || branches.value[0] || 'Main Branch',
     restaurant: restaurantStore.activeSnapshot,
   })
 
+  // Requirement 4: seat already reserved "name"
   if (!result.ok) {
     if (result.code === 'conflict') {
-      error.value = result.seat
-        ? t('booking.conflictWithSeat', { table: result.table, seat: result.seat })
-        : t('booking.conflictNoSeat', { table: result.table })
+      const seatText = result.seat ? `Seat ${result.seat}` : 'Any Seat'
+      if (locale.lang === 'bn') {
+        error.value = `টেবিল ${result.table}, সিট ${result.seat || '1'} ইতোমধ্যে "${result.customerName}" এর নামে বুক করা আছে!`
+      } else {
+        error.value = `Seat already reserved by "${result.customerName}" (Table ${result.table}, ${seatText})`
+      }
     } else {
-      error.value = t('orders.errorAddItem')
+      error.value = 'Unable to place order. Please review your entries.'
     }
     return
   }
 
+  // Redirect to invoice page as required by Step 4
   router.push(`/app/invoices/${result.order.id}`)
 }
 </script>
 
-<style lang="scss" scoped>
-.order-shell {
-  display: grid;
-  grid-template-columns: 1fr 340px;
-  gap: 22px;
-  align-items: start;
-  max-width: 1180px;
+<style scoped>
+.order-container {
+  max-width: 1200px;
   margin: 0 auto;
 }
-@media (max-width: 1023px) {
-  .order-shell {
-    grid-template-columns: 1fr;
-  }
+.pos-item-card {
+  border-radius: 12px;
+  background: var(--surface);
+  transition: all 0.15s ease;
 }
-.search-input {
-  border-radius: 8px;
+.pos-item-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--q-primary);
 }
-.item-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 12px;
-}
-@media (max-width: 599px) {
-  .item-grid {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 10px;
-  }
-}
-.menu-chit {
-  padding-left: 5px;
-}
-.tone-chit-bar {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 5px;
-}
-.qty-stepper {
+.pos-item-card.in-cart {
+  border: 2px solid var(--q-primary);
   background: var(--surface-sunken);
-  border-radius: 20px;
 }
-.ticket-side {
+.table-map-card {
+  border-radius: 12px;
+}
+.table-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.ticket-card {
+  border-radius: 14px;
+  background: var(--surface);
+}
+.sticky-ticket {
   position: sticky;
-  top: 16px;
+  top: 80px;
 }
-@media (max-width: 1023px) {
-  .ticket-side {
-    position: static;
-  }
+.cart-items-list {
+  max-height: 240px;
+  overflow-y: auto;
 }
-.ticket {
-  min-height: 200px;
-}
-.count-badge {
-  background: var(--saffron-tint);
-  color: var(--saffron);
-  font-weight: 600;
-  border-radius: 6px;
-}
-.ticket-line {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 0;
+.border-bottom {
   border-bottom: 1px solid var(--line);
-  &:last-of-type {
-    border-bottom: none;
-  }
 }
-.totals-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 3px 0;
-}
-.total-row {
-  font-weight: 700;
-  font-size: 1.05rem;
-}
-.error-banner {
-  background: var(--clay-tint);
-  color: var(--clay);
-  border-radius: 8px;
-  padding: 9px 12px;
-  font-size: 0.86rem;
-}
-.empty-state {
-  max-width: 420px;
+.empty-card {
+  border-radius: 16px;
+  border: 2px dashed var(--line);
 }
 </style>

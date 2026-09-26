@@ -1,18 +1,16 @@
 <template>
   <q-page class="flex flex-center column q-pa-xl" style="min-height: 100vh">
-    <div class="font-display text-weight-bold ink-faint" style="font-size: 5rem; line-height: 1">404</div>
-    <div class="page-title q-mt-sm">{{ t('notFound.title') }}</div>
-    <div class="page-subtitle q-mt-xs q-mb-lg">{{ t('notFound.subtitle') }}</div>
-    <q-btn unelevated color="primary" class="stamp" :to="landing" :label="t('notFound.back')" />
+    <div class="text-h1 text-weight-bolder text-primary">404</div>
+    <div class="text-h5 text-weight-bold q-mt-sm">Page Not Found</div>
+    <div class="text-body1 text-grey-6 q-mt-xs q-mb-lg">The page you are looking for does not exist.</div>
+    <q-btn unelevated color="primary" :to="landing" label="Back to Safety" class="text-weight-bold q-px-lg" />
   </q-page>
 </template>
 
 <script setup>
 import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { useI18n } from '@/composables/useI18n'
 
 const auth = useAuthStore()
-const { t } = useI18n()
 const landing = computed(() => (auth.isLoggedIn ? '/app' : '/'))
 </script>

@@ -1,45 +1,80 @@
 <template>
-  <div class="slip">
-    <img v-if="restaurant?.logo" :src="restaurant.logo" class="slip-logo" />
-    <div class="text-center font-display text-weight-bold" style="font-size: 1.05rem">
-      {{ restaurant?.name || 'Resto POS' }}
-    </div>
-    <div v-if="restaurant?.address" class="text-center ink-soft" style="font-size: 0.8rem">{{ restaurant.address }}</div>
-    <div v-if="restaurant?.phone" class="text-center ink-soft font-mono" style="font-size: 0.78rem">Tel: {{ restaurant.phone }}</div>
-    <div v-if="order.branch" class="text-center ink-soft" style="font-size: 0.78rem">{{ t('slip.branch') }}: {{ order.branch }}</div>
-
-    <hr class="receipt-rule" />
-
-    <div class="kv"><span>{{ t('slip.invoice') }}</span><span class="font-mono">{{ order.invoiceNo }}</span></div>
-    <div class="kv"><span>{{ t('slip.date') }}</span><span class="font-mono">{{ formatDateTime(order.createdAt) }}</span></div>
-    <div class="kv"><span>{{ t('slip.customer') }}</span><span>{{ order.customer.name }}</span></div>
-    <div v-if="order.customer.phone" class="kv"><span>{{ t('slip.phone') }}</span><span class="font-mono">{{ order.customer.phone }}</span></div>
-    <div v-if="seating" class="kv"><span>{{ t('slip.seating') }}</span><span>{{ seating }}</span></div>
-    <!-- Task 4: surface the existing completedAt timestamp on completed orders (data already
-         stored by stores/orders.js `complete()`; it just wasn't shown anywhere before). -->
-    <div v-if="order.status === 'completed' && order.completedAt" class="kv">
-      <span>{{ t('invoice.completedAt') }}</span><span class="font-mono">{{ formatDateTime(order.completedAt) }}</span>
+  <div class="receipt-slip q-pa-sm">
+    <div class="text-center q-mb-xs">
+      <img v-if="restaurant?.logo" :src="restaurant.logo" class="receipt-logo" />
+      <div class="text-h6 text-weight-bolder">{{ restaurant?.name || 'Restaurant POS' }}</div>
+      <div v-if="restaurant?.address" class="text-caption text-grey-7">{{ restaurant.address }}</div>
+      <div v-if="restaurant?.phone" class="text-caption text-grey-7 font-mono">Tel: {{ restaurant.phone }}</div>
+      <div v-if="order.branch" class="text-caption text-grey-7">Branch: {{ order.branch }}</div>
     </div>
 
-    <hr class="receipt-rule" />
+    <q-separator dashed class="q-my-sm" />
 
-    <div v-for="l in order.lines" :key="l.itemId" class="slip-line">
-      <div class="col">
-        <div>{{ l.name }}</div>
-        <div class="ink-faint font-mono" style="font-size: 0.78rem">{{ l.qty }} &times; {{ formatMoney(l.price) }}</div>
+    <div class="column q-gutter-y-xs text-caption">
+      <div class="row justify-between">
+        <span class="text-grey-6">Invoice No:</span>
+        <span class="font-mono text-weight-bold">{{ order.invoiceNo }}</span>
       </div>
-      <div class="font-mono">{{ formatMoney(l.amount) }}</div>
+      <div class="row justify-between">
+        <span class="text-grey-6">Date & Time:</span>
+        <span class="font-mono">{{ formatDateTime(order.createdAt) }}</span>
+      </div>
+      <div class="row justify-between">
+        <span class="text-grey-6">Customer:</span>
+        <span class="text-weight-bold">{{ order.customer?.name || 'Walk-in' }}</span>
+      </div>
+      <div v-if="order.customer?.phone" class="row justify-between">
+        <span class="text-grey-6">Phone:</span>
+        <span class="font-mono">{{ order.customer.phone }}</span>
+      </div>
+      <div v-if="seating" class="row justify-between">
+        <span class="text-grey-6">Seating:</span>
+        <span class="font-mono text-weight-bold">{{ seating }}</span>
+      </div>
+      <div v-if="order.status === 'completed' && order.completedAt" class="row justify-between">
+        <span class="text-grey-6">Completed:</span>
+        <span class="font-mono">{{ formatDateTime(order.completedAt) }}</span>
+      </div>
     </div>
 
-    <hr class="receipt-rule" />
-    <div class="kv"><span>{{ t('slip.subtotal') }}</span><span class="font-mono">{{ formatMoney(order.subtotal) }}</span></div>
-    <div class="kv ink-soft" style="font-size: 0.85rem">
-      <span>{{ t('orders.vat', { rate: Math.round(order.taxRate * 1000) / 10 }) }}</span><span class="font-mono">{{ formatMoney(order.tax) }}</span>
+    <q-separator dashed class="q-my-sm" />
+
+    <!-- Ordered Items -->
+    <div class="items-receipt-list q-my-sm">
+      <div v-for="l in order.lines" :key="l.itemId" class="row justify-between items-start q-py-xs text-body2">
+        <div class="col">
+          <div class="text-weight-bold">{{ locale.lang === 'bn' && l.nameBn ? l.nameBn : l.name }}</div>
+          <div class="text-caption text-grey-6 font-mono">
+            {{ l.qty }} &times; {{ formatMoney(l.price) }}
+          </div>
+        </div>
+        <div class="font-mono text-weight-bold">{{ formatMoney(l.amount) }}</div>
+      </div>
     </div>
-    <hr class="receipt-rule" />
-    <div class="kv total"><span>{{ t('slip.total') }}</span><span class="font-mono">{{ formatMoney(order.total) }}</span></div>
-    <hr class="receipt-rule" />
-    <div class="text-center ink-faint" style="font-size: 0.78rem">{{ t('slip.thankYou') }}</div>
+
+    <q-separator dashed class="q-my-sm" />
+
+    <!-- Summary -->
+    <div class="column q-gutter-y-xs text-body2">
+      <div class="row justify-between">
+        <span class="text-grey-7">Subtotal:</span>
+        <span class="font-mono">{{ formatMoney(order.subtotal) }}</span>
+      </div>
+      <div class="row justify-between">
+        <span class="text-grey-7">VAT ({{ Math.round((order.taxRate || 0.05) * 100) }}%):</span>
+        <span class="font-mono">{{ formatMoney(order.tax) }}</span>
+      </div>
+      <q-separator class="q-my-xs" />
+      <div class="row justify-between text-h6 text-weight-bolder text-primary">
+        <span>TOTAL:</span>
+        <span class="font-mono">{{ formatMoney(order.total) }}</span>
+      </div>
+    </div>
+
+    <q-separator dashed class="q-my-sm" />
+    <div class="text-center text-caption text-grey-6 q-mt-sm">
+      {{ locale.t('invoices.thankYou') }}
+    </div>
   </div>
 </template>
 
@@ -47,46 +82,35 @@
 import { computed } from 'vue'
 import { formatDateTime } from '@/utils/dates'
 import { formatMoney } from '@/utils/money'
-import { useI18n } from '@/composables/useI18n'
+import { useLocaleStore } from '@/stores/locale'
 
-const props = defineProps({ order: { type: Object, required: true }, restaurant: { type: Object, default: null } })
-const { t } = useI18n()
+const props = defineProps({
+  order: { type: Object, required: true },
+  restaurant: { type: Object, default: null },
+})
 
-const seating = computed(() =>
-  [props.order.table && `${t('invoice.table')} ${props.order.table}`, props.order.seat && `${t('invoice.seat')} ${props.order.seat}`]
+const locale = useLocaleStore()
+
+const seating = computed(() => {
+  const tLabel = locale.t('invoices.table')
+  const sLabel = locale.t('invoices.seat')
+  return [props.order.table && `${tLabel} ${props.order.table}`, props.order.seat && `${sLabel} ${props.order.seat}`]
     .filter(Boolean)
-    .join(', '),
-)
+    .join(', ')
+})
 </script>
 
-<style lang="scss" scoped>
-.slip {
-  max-width: 320px;
+<style scoped>
+.receipt-slip {
+  width: 100%;
+  max-width: 340px;
   margin: 0 auto;
+  font-family: var(--font-body);
 }
-.slip-logo {
-  display: block;
-  max-width: 64px;
-  max-height: 64px;
-  margin: 0 auto 8px;
-  border-radius: 6px;
-}
-.kv {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  font-size: 0.86rem;
-  padding: 2px 0;
-}
-.kv.total {
-  font-weight: 700;
-  font-size: 1.05rem;
-}
-.slip-line {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 5px 0;
-  font-size: 0.88rem;
+.receipt-logo {
+  max-width: 60px;
+  max-height: 60px;
+  border-radius: 8px;
+  margin-bottom: 6px;
 }
 </style>
